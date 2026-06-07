@@ -2,6 +2,7 @@
 
 -- Numeric Transformations
 
+SELECT * FROM dim_product;
 SELECT 
     unit_price * 0.90 AS discounted_price,
     unit_price + 10 AS taxed_price,
@@ -9,7 +10,7 @@ SELECT
 FROM
     dim_product;
     
-    
+SELECT * FROM dim_product;    
 SELECT 
     unit_price * 0.90 AS discounted_prices,
     unit_price + 10 AS taxed_price,
@@ -41,6 +42,9 @@ FROM
     dim_date;
     
 -- 3)
+
+SELECT * FROM dim_date; 
+
 SELECT 
    date,
    YEAR(date),
@@ -63,26 +67,30 @@ FROM dim_date;
 
 
 -- 5) ADDDATE(date, INTERVAL value unit), SUBDATE(date, INTERVAL value unit)
+
+SELECT * FROM dim_date; 
 SELECT 
    date,
    ADDDATE(date,2),
    SUBDATE(date,2)
 FROM dim_date; 
    
-SELECT ADDDATE('2026-05-03', 2);   
+SELECT ADDDATE('2026-05-03', 4);   
 
 
 -- 6) DATEDIFF(date1, date2)    -- returns date1 - date2 (in days)
+SELECT * FROM dim_date;
+
 SELECT 
    date,
    DATEDIFF(DATE(UTC_TIMESTAMP()), date) AS total_days
 FROM dim_date;
 
 
--- 7) CAST() converts a string → DATETIME value.
+-- 7) CAST() converts a string → DATETIME value. CAST(string_expression AS DATETIME)
 SELECT 
    date,
-   CAST('2025-01-01' AS datetime) AS Casted_time
+   CAST(date AS datetime) AS Casted_time
 FROM dim_date;
 
 
@@ -138,8 +146,8 @@ FROM dim_date;
 
 
 
-
 -- TYPE CASTING
+SELECT * FROM dim_customer;
 
 SELECT customer_key,
 CAST(customer_key AS CHAR(100)) AS Casted_key
@@ -160,6 +168,8 @@ SELECT * FROM dim_customer;
 -- CONCAT() - combine (join) multiple strings into one.
 
 -- query 1
+SELECT * FROM dim_customer;
+
 SELECT CONCAT(first_name,last_name) AS Full_name
 FROM
 dim_customer;
@@ -173,8 +183,9 @@ dim_customer;
    
  -- LENGTH() length query is used to find the number of characters in a string
  
+SELECT * FROM dim_customer;
+ 
 SELECT 
-    CONCAT(first_name, ' ', last_name) AS full_name,
     LENGTH(country) AS country_size
 FROM
     dim_customer;
@@ -190,6 +201,9 @@ FROM
     
 -- LOWER -convert a string to lowercase.
 
+ 
+SELECT * FROM dim_customer;
+
  SELECT 
     CONCAT(first_name, ' ', last_name) AS Full_name,
     LENGTH(country) AS country_size,
@@ -202,6 +216,7 @@ FROM
 -- SUBSTRING 
  -- extract a part of a string -- SELECT SUBSTRING(string, start, length)
 
+SELECT * FROM dim_customer;
         
  SELECT 
     CONCAT(first_name, ' ', last_name) AS Full_name,   
@@ -213,6 +228,9 @@ FROM
     
  
  -- REPLACE   -- This takes the string, finds the specific symbol/character, and replaces it with another symnbol/character at that place
+ 
+ SELECT * FROM dim_customer;
+ 
  SELECT 
     CONCAT(first_name, ' ', last_name) AS Full_name,
     LENGTH(country) AS country_size,
@@ -250,12 +268,14 @@ FROM
     REVERSE(launch_date) AS Reversed_date,
     REVERSE(product_name) AS Reversed_prod_name
 FROM
-    dim_product;   
+    dim_product;
+    
+SELECT REVERSE("HI IM DHONI") AS Reversed_string;   
     
     
 -- REPEAT , The REPEAT() function is used to repeat a string multiple times.    syntax: REPEAT(string, number_of_times)
 
- SELECT REPEAT('Hi', 3);  
+ SELECT REPEAT('Hi ', 3);  
 
 SELECT *,
     REPEAT(product_name, 2) AS Repeat_Name
@@ -274,7 +294,7 @@ FROM dim_product;
 -- It joins multiple strings using a separator between them.
 
  SELECT *,
-    CONCAT_WS(' ',first_name, last_name,country) AS Full_name
+    CONCAT_WS(' ',first_name, last_name,country) AS Meta_info
 FROM
     dim_customer;  
   

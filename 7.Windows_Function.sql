@@ -540,11 +540,96 @@ FROM
 ) subquery 
 WHERE Deduplicate_Ranking=1;
 
+/*
+
+Step 1: PARTITION BY emp_id
+
+The rows are grouped by emp_id.
+Since each emp_id appears only once:
+
+emp_id	 Rows in Partition
+--------------------------
+1	     1 row
+2	     1 row
+3	     1 row
 
 
--- SCENARIO 3 [Lag and Lead]
+Step 2: ROW_NUMBER()
+
+For each partition, numbering starts from 1.
+
+Since every partition contains only one row:
+
+emp_id	ROW_NUMBER()
+----------------------
+1	       1
+2	       1
+3	       1
+
+
+Step 3: WHERE Deduplicate_Ranking = 1
+
+Keeps only rows with rank 1.
+Because every row has rank 1, all rows are returned.
+
+*/
 
 
 
+-- SCENARIO 3 [Lag and Lead] 
+-- LAG() and LEAD() are SQL window functions used to access values from previous and next rows without using self-joins.
+/*
+
+LAG Syntax:
+
+LAG(column_name, offset, default_value)
+OVER (
+    [PARTITION BY column_name]
+    ORDER BY column_name
+)
+
+
+
+LEAD Syntax:
+
+LEAD(column_name, offset, default_value)
+OVER (
+    [PARTITION BY column_name]
+    ORDER BY column_name
+)
+
+*/
+
+CREATE TABLE monthly_sales (
+    month_id INT,
+    month_name VARCHAR(10),
+    sales_amount INT
+);
+
+INSERT INTO monthly_sales (month_id, month_name, sales_amount) VALUES
+(1, 'Jan', 10000),
+(2, 'Feb', 12000),
+(3, 'Mar', 15000),
+(4, 'Apr', 13000),
+(5, 'May', 17000),
+(6, 'Jun', 20000);
+
+
+SELECT * FROM monthly_sales;
+
+SELECT *,
+LAG(sales_amount,1)  OVER(ORDER BY month_id) AS previous_sales,
+LEAD(sales_amount,1) OVER(ORDER BY month_id) AS Next_sales
+FROM monthly_sales;
+
+SELECT *,
+LAG(sales_amount,1,'Data Not Available')  OVER(ORDER BY month_id) AS previous_sales,
+LEAD(sales_amount,1,'Data Not Available') OVER(ORDER BY month_id) AS Next_sales
+FROM monthly_sales;
+
+SELECT *,
+LAG(sales_amount,2,'Data Not Available')  OVER(ORDER BY month_id) AS previous_sales,
+LEAD(sales_amount,2,'Data Not Available') OVER(ORDER BY month_id) AS Next_sales
+FROM monthly_sales;
      
      
