@@ -1,5 +1,6 @@
 CREATE DATABASE schedulers;
 USE schedulers;
+
 CREATE TABLE customers (
     customer_id INT AUTO_INCREMENT PRIMARY KEY,
     first_name VARCHAR(50),
@@ -352,18 +353,17 @@ daily_sales_summary
 -----------------------------------
 
 Step A:
-
 Source tables receive new orders.
 
 orders
 order_items
 
+------------------------------------
 Step B:
-
 Scheduled Event runs.
 
 CALL load_sales_staging();
-
+-----------------------------------------------------------
 Step C:
 
 ETL executes.
@@ -374,17 +374,45 @@ Transform
     ↓
 Load
 
+--------------------------------------------------------
 Step D:
 
 Data arrives in:
 sales_staging
+-----------------------------------------------
 
+orders + order_items
+         │
+         ▼
+      EXTRACT
+         │
+         ▼
+   Raw Order Data
+         │
+         ▼
+     TRANSFORM
+         │
+         ▼
+Revenue Calculated
+         │
+         ▼
+       LOAD
+         │
+         ▼
+   sales_staging
+         │
+         ▼
+     SCHEDULER
+         │
+         ▼
+Run every 5 minutes
 
 
 */
 
 
-
+SELECT * FROM orders;
+SELECT * FROM order_items;
 
  -- Stage 1: EXTRACT
  -- Read data from source tables
@@ -399,4 +427,187 @@ sales_staging
 FROM orders o
 JOIN order_items oi
     ON o.order_id = oi.order_id;
+    
+    
+-- Stage 2: TRANSFORM
+-- Take the extracted data and apply business logic.  
+
+SELECT
+    o.order_id,
+    o.customer_id,
+    oi.product_id,
+    oi.quantity,
+    oi.unit_price,
+    oi.discount_pct,
+    ROUND(
+        oi.quantity *
+        oi.unit_price *
+        (1 - oi.discount_pct/100),
+        2
+    ) AS revenue
+FROM orders o
+JOIN order_items oi
+    ON o.order_id = oi.order_id;
+
+    
+-- Stage 3: LOAD
+-- Take the transformed data and save it.  
+  
+DELIMITER //
+
+CREATE PROCEDURE load_sales_staging()
+BEGIN
+
+    INSERT INTO sales_staging
+    (
+        order_id,
+        customer_id,
+        product_id,
+        quantity,
+        unit_price,
+        discount_pct,
+        revenue,
+        load_timestamp
+    )
+    SELECT
+        o.order_id,
+        o.customer_id,
+        oi.product_id,
+        oi.quantity,
+        oi.unit_price,
+        oi.discount_pct,
+        ROUND(
+            oi.quantity *
+            oi.unit_price *
+            (1 - oi.discount_pct/100),
+            2
+        ) AS revenue,
+        NOW()
+    FROM orders o
+    JOIN order_items oi
+        ON o.order_id = oi.order_id;
+
+END //
+
+DELIMITER ;
+
+
+-- Verify Procedure Exists
+SHOW PROCEDURE STATUS
+WHERE Db = 'schedulers';
+
+-- call the procedure
+CALL load_sales_staging();
+
+-- check data is loaded
+SELECT * FROM sales_staging;
  
+/*
+
+What is Scheduling?
+
+Right now, we manually run:
+CALL load_sales_staging();
+
+
+what if new orders arrive every few minutes??
+
+Without scheduling:
+10:00 -> You run procedure
+10:05 -> You run procedure
+10:10 -> You run procedure
+
+So this is not practical.
+
+Instead, MySQL can run it automatically.
+
+*/
+
+
+-- Check Event Scheduler
+
+SHOW VARIABLES LIKE 'event_scheduler';
+
+
+-- If OFF
+SET GLOBAL event_scheduler = ON;
+
+
+-- Create a Safe Test Event
+
+CREATE EVENT test_scheduler
+ON SCHEDULE EVERY 1 MINUTE
+DO
+INSERT INTO audit_log
+(
+    process_name,
+    execution_time,
+    records_processed,
+    status,
+    comments
+)
+VALUES
+(
+    'TEST_SCHEDULER',
+    NOW(),
+    0,
+    'SUCCESS',
+    'Event Scheduler Running'
+);
+
+
+-- check the table now
+SELECT * FROM audit_log;
+
+
+-- View Events
+SHOW EVENTS;
+
+
+-- Disable Event
+ALTER EVENT test_scheduler
+DISABLE;
+
+-- Enable Again
+ALTER EVENT test_scheduler
+ENABLE;
+
+-- Delete event
+DROP EVENT test_scheduler;
+
+
+
+/*
+
+Event Scheduler
+       │
+       ▼
+load_sales_staging()
+       │
+       ▼
+sales_staging
+
+*/ 
+
+
+-- Scheduling  the event
+
+CREATE EVENT load_sales_staging_event
+ON SCHEDULE EVERY 5 MINUTE
+DO
+CALL load_sales_staging();
+
+
+/*
+
+Scheduler fires
+       ↓
+Procedure runs
+       ↓
+ETL executes
+       ↓
+Rows inserted into sales_staging
+
+* / 
+
+

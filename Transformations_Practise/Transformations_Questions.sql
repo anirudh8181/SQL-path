@@ -1,0 +1,73 @@
+-- =====================================================================
+-- DATA TRANSFORMATIONS - 50 DATA ENGINEER INTERVIEW QUESTIONS
+-- Schema: Real_Sales (star schema) -- see Insert_script.sql for full DDL/data
+-- Topics: String (UPPER/LOWER/CONCAT/CONCAT_WS/SUBSTRING/SUBSTRING_INDEX/LEFT/
+--         RIGHT/LENGTH/CHAR_LENGTH/TRIM/REPLACE/REGEXP_REPLACE/LPAD),
+--         Numeric (ROUND/CEILING/FLOOR/ABS/MOD), Date (YEAR/MONTH/QUARTER/WEEK/
+--         DAYNAME/DATE_FORMAT/DATEDIFF/TIMESTAMPDIFF/LAST_DAY) + ETL pipelines.
+-- Solutions in: Transformations_Solutions.sql   |   Dialect: MySQL 8.0+
+-- Difficulty: [B]eginner ~20% | [I]ntermediate ~50% | [A]dvanced ~30%
+-- =====================================================================
+
+USE Real_Sales;
+
+-- ---- STRING transformations (T1 - T20) -----------------------------
+-- T1.  [B] Proper-case "First Last" display name + extract email domain.
+-- T2.  [B] Uppercase country and city; trimmed.
+-- T3.  [B] Lowercase + trim email to a canonical form.
+-- T4.  [B] Customer initials: first letter of first_name + first letter of last_name.
+-- T5.  [B] Build "Last, First" formatted name with CONCAT.
+-- T6.  [I] Full mailing address via CONCAT_WS (city, state, country) skipping NULLs.
+-- T7.  [I] Phone digits-only normalization (REGEXP_REPLACE) + digit count.
+-- T8.  [I] Composite key REGION|CATEGORY|YYYYMM per sale (CONCAT_WS).
+-- T9.  [I] Email local part, domain, and TLD via SUBSTRING_INDEX.
+-- T10. [I] Strip 'CUST' prefix from customer_id to a numeric id (REGEXP_REPLACE).
+-- T11. [I] Strip 'PROD'/'STORE' prefixes from product_id/store_id to numeric ids.
+-- T12. [I] Clean category: replace ' & ' with ' and ', spaces with underscore.
+-- T13. [I] Build a URL slug from product_name (lowercase, spaces -> hyphens).
+-- T14. [I] Country code = UPPER(LEFT(country,3)); pad short names if needed.
+-- T15. [I] LENGTH vs CHAR_LENGTH of full name (byte vs char count).
+-- T16. [I] Keep only alphabetic characters in city (REGEXP_REPLACE).
+-- T17. [I] Mask email for PII: first char + '***' + '@' + domain.
+-- T18. [I] Mask phone: show only the last 4 digits (e.g. ******1234).
+-- T19. [I] Split phone into area code (first 3 digits) and subscriber number.
+-- T20. [I] Build a username: lower(first initial + last_name), strip non-letters.
+
+-- ---- NUMERIC transformations (T21 - T35) ---------------------------
+-- T21. [B] Present total_amount: ROUND 2dp, CEILING, FLOOR.
+-- T22. [B] Gross revenue = quantity_sold * unit_price.
+-- T23. [I] Net revenue = quantity_sold * (unit_price - discount).
+-- T24. [I] Discount as % of unit_price (ROUND + NULLIF safe division).
+-- T25. [I] ABS of reconciliation diff vs qty*(unit_price-discount).
+-- T26. [I] Hash-partition sales into 8 buckets using MOD(sales_id, 8).
+-- T27. [B] Even/odd customer_key flag using MOD.
+-- T28. [I] Round revenue to nearest 100 (ROUND(x,-2)) and nearest 10.
+-- T29. [I] Psychological pricing: FLOOR(unit_price)+0.99.
+-- T30. [A] Net margin per unit assuming cost = 60% of unit_price.
+-- T31. [I] Tax computed at 8% and rounded UP with CEILING.
+-- T32. [A] Average order value per customer, rounded to 2dp.
+-- T33. [I] Effective revenue per unit after discount.
+-- T34. [A] Each product's revenue as a % of grand-total revenue (window ratio).
+-- T35. [I] Price-band lower bound via FLOOR(unit_price/100)*100.
+
+-- ---- DATE transformations (T36 - T47) ------------------------------
+-- T36. [B] Extract year, month, quarter, day from the sale date.
+-- T37. [I] Customer tenure in months + tenure bucket (0-6m/6-12m/1-2y/2y+).
+-- T38. [I] Fiscal quarter (FY starts April) + calendar period like 2025-Q2.
+-- T39. [I] Days since product launch (DATEDIFF).
+-- T40. [I] DATE_FORMAT showcase: '2025-04', 'April 2025', '05-Apr-2025'.
+-- T41. [I] Day name (DAYNAME) of each sale + weekend flag from dim_date.
+-- T42. [I] Week-of-year (WEEK / WEEKOFYEAR) for each sale date.
+-- T43. [I] Product age in whole years (TIMESTAMPDIFF).
+-- T44. [A] Days between customer join_date and their FIRST order.
+-- T45. [I] Fiscal-year label FY2025 (April start) + reporting period.
+-- T46. [I] Month-end date and first-of-month from each sale date (LAST_DAY).
+-- T47. [I] Customer cohort label = join year-month (DATE_FORMAT).
+
+-- ---- ETL pipelines (T48 - T50, multi-step) -------------------------
+-- T48. [A] End-to-end customer reporting table: clean name, domain, category by
+--          lifetime revenue, tenure bucket, revenue band, dq_flag (Silver->Gold).
+-- T49. [A] Monthly sales reporting layer: per year-month total + category pivot,
+--          prior month revenue, MoM growth %, UP/DOWN/FLAT/BASELINE trend.
+-- T50. [A] Product launch-cohort table: cohort = launch year, units sold, revenue,
+--          avg selling price, and a cleaned product_slug + category_clean.

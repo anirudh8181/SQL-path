@@ -292,6 +292,9 @@ FROM
     dim_product
 GROUP BY category;
 
+SELECT * FROM dim_product;
+
+
 SELECT * FROM real_sales.dim_product;
 
 

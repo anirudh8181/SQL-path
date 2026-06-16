@@ -41,7 +41,7 @@ SELECT
 SELECT 
      *,
      CASE
-     WHEN  unit_price <=100 AND category='clothing' THEN 'Expensive'
+     WHEN  unit_price <=100 AND category='clothing' THEN 'Cheap'
      WHEN unit_price <=200  AND category ='clothing' THEN 'Normal'
      WHEN unit_price >200 AND category='clothing'  THEN 'Expensive'
      ELSE CONCAT('Not this category:',category)
@@ -97,7 +97,8 @@ ORDER BY
     CASE
         WHEN category = 'Electronics' THEN 1
         WHEN category = 'Sports' THEN 2
-        ELSE 3
+        WHEN category = 'clothing' THEN 3
+        ELSE 4
     END;
   
   

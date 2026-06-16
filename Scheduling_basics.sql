@@ -34,6 +34,7 @@ SHOW EVENTS;
 SELECT *
 FROM information_schema.EVENTS;
 
+/*
 
 -- General Syntax
 CREATE EVENT event_name
@@ -41,7 +42,8 @@ ON SCHEDULE schedule_definition
 DO
 sql_statement;
 
-/*
+
+
 
 | Part                | Meaning                    |
 | ------------------- | -------------------------- |

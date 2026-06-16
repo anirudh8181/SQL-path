@@ -38,7 +38,7 @@ Examples:
 | ------------- | ---------------------------- |
 | Aggregate     | SUM, AVG, COUNT, MIN, MAX    |
 | Ranking       | ROW_NUMBER, RANK, DENSE_RANK |
-| Analytical    | LAG, LEAD, FIRST_VALUE ,NTH tile      |
+| Analytical    | LAG, LEAD, FIRST_VALUE       |
 
 
 Example:
@@ -123,8 +123,6 @@ Example Table:
 
 */
 
-SELECT * FROM dim_product;
-
 SELECT
     product_name,
     brand,
@@ -142,13 +140,11 @@ This defines order INSIDE each partition.
 Very important for:
 
 ranking
-running totals/ moving totals
+running totals
 lag/lead
-moving averages/ running averages
-
+moving averages
 */
 
-SELECT * FROM dim_product;
 
 SELECT
     product_name,
@@ -156,16 +152,7 @@ SELECT
     category,
     unit_price,
 	launch_date,
-    SUM(unit_price) OVER( ORDER BY  launch_date) AS Running_Total
-FROM dim_product;
-
-SELECT
-    product_name,
-    brand,
-    category,
-    unit_price,
-	launch_date,
-    AVG(unit_price) OVER( ORDER BY  launch_date) AS Moving_AVG
+    SUM(unit_price) OVER( ORDER BY  launch_date) AS Total
 FROM dim_product;
 
 /*
@@ -183,8 +170,6 @@ sliding window
 
 Example:
 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
-ROWS BETWEEN UNBOUNDED PRECEDING AND  UNBOUNDED FOLLOWING
-ROWS BETWEEN 2 PRECEDING AND 3 FOLLOWING
 
 
 Means:
@@ -288,7 +273,6 @@ FROM
  -- FRAMES ---------
  
 /*
-
 | Keyword             | Meaning              |
 | ------------------- | -------------------- |
 | CURRENT ROW         | Current row          |
@@ -296,7 +280,6 @@ FROM
 | UNBOUNDED FOLLOWING | Till last row        |
 | 2 PRECEDING         | 2 rows before        |
 | 3 FOLLOWING         | 3 rows after         |
-
 */ 
  
  SELECT *,
@@ -304,15 +287,14 @@ FROM
 FROM 
      dim_product;  
  
- 
  SELECT *,
-      SUM(unit_price) OVER(ORDER BY product_key ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS Runnning_Total
+      SUM(unit_price) OVER(ORDER BY launch_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS Runnning_Total
 FROM 
    dim_product;
    
    
  SELECT *,
-      SUM(unit_price) OVER(ORDER BY product_key ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS Total_Sum
+      SUM(unit_price) OVER(ORDER BY launch_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS Total_Sum
 FROM 
    dim_product;
  
@@ -382,7 +364,6 @@ VALUES
 (10,'Asha',   'Sales',   50000);
 
 
-
 DROP TABLE IF EXISTS employees;
 
 
@@ -396,7 +377,7 @@ RANK()
 DENSE_RANK()
 
 All are used with:
-OVER(ORDER BY column_name)
+OVER(ORDER BY column)
 
 
 */
@@ -413,15 +394,13 @@ Unique sequential number to every row.
 Even duplicate values get different numbers.
 
 Syntax:
-ROW_NUMBER() OVER(ORDER BY column_name DESC)
+ROW_NUMBER() OVER(ORDER BY salary DESC)
 
 
 */
 
-SELECT * FROM employees;
-
 SELECT *,
-ROW_NUMBER() OVER(ORDER BY salary DESC) AS 'Ranking_Row_Number'
+ROW_NUMBER() OVER(ORDER BY salary DESC) AS 'Row_Number'
 FROM employees;
 
 
@@ -437,7 +416,7 @@ BUT:
 skips next rank numbers.
 
 Syntax:
-RANK() OVER(ORDER BY column_name DESC)
+RANK() OVER(ORDER BY salary DESC)
 
 
 IF Two people occupied rank 1.
@@ -449,12 +428,9 @@ ranking with gaps
 
 */
 
-SELECT * FROM employees;
-
 SELECT *,
 RANK() OVER(ORDER BY salary DESC) AS 'Row_Rank'
 FROM employees;
-
 
 -- DENSE_RANK()
 /*
@@ -466,12 +442,10 @@ BUT:
 does NOT skip ranks
 
 */
-SELECT * FROM employees;
 
 SELECT *,
 DENSE_RANK() OVER(ORDER BY salary DESC) AS 'Dense_Rank'
 FROM employees;
-
 
 -- 1 
 SELECT *,
@@ -479,7 +453,6 @@ ROW_NUMBER() OVER(ORDER BY salary DESC) AS 'Row_Number',
 RANK() OVER(ORDER BY salary DESC) AS 'Row_Rank',
 DENSE_RANK() OVER(ORDER BY salary DESC) AS 'Dense_Rank'
 FROM employees;
-
 
 -- Applying Partition
 
@@ -494,7 +467,6 @@ Rankings are assigned
 */
 
 -- 2
-
 SELECT *,
 ROW_NUMBER() OVER(PARTITION BY department ORDER BY salary DESC) AS 'Row_Number',
 RANK() OVER(PARTITION BY department ORDER BY salary DESC) AS 'Row_Rank',
@@ -504,10 +476,9 @@ FROM employees;
 
 -- REAL TIME scenarios
 
--- SCENARIO 1. FIND Nth Value [Most afordable/ most expensive from top to bottom]
+-- SCENARIO 1. FIND Nth Value [Most afoordable/ most expensive from top to bottom]
 
 -- SUBQUERY
-
 SELECT 
        *,
        DENSE_RANK() OVER(ORDER BY unit_Price) AS ranking
@@ -528,7 +499,7 @@ WHERE
   ranking =5;
   
   
-SELECT subquery.*  -- subquery.* means: "Open the  'subquery' and give me every folder inside it."
+SELECT subquery.*  -- subquery.* means: "Open the box labeled 'subquery' and give me every folder inside it."
 FROM
 (
 SELECT 
@@ -541,7 +512,7 @@ WHERE
   ranking =5;
 
 
--- SCENARIO 2. [Removing duplicates/ Deduplicating] 
+-- SCENARIO 2. [Removing duplicates]
 
 SELECT * FROM employees;
 
@@ -552,12 +523,12 @@ VALUES
 
 -- SUBQUERY
 SELECT *,
-      ROW_NUMBER() OVER(PARTITION BY emp_id ORDER BY emp_id) AS Rownumber
+      ROW_NUMBER() OVER(PARTITION BY emp_id ORDER BY emp_id) AS Ranking 
 FROM 
    employees;   
    
    
--- Deduplicate_Ranking is just an alias (column name) given to the result of ROW_NUMBER()
+
 SELECT 
     subquery.*  
 FROM    
@@ -646,21 +617,10 @@ INSERT INTO monthly_sales (month_id, month_name, sales_amount) VALUES
 
 SELECT * FROM monthly_sales;
 
-
-
 SELECT *,
 LAG(sales_amount,1)  OVER(ORDER BY month_id) AS previous_sales,
 LEAD(sales_amount,1) OVER(ORDER BY month_id) AS Next_sales
 FROM monthly_sales;
-
-SELECT *,
-LAG(sales_amount,1)  OVER(ORDER BY month_id) AS previous_sales
-FROM monthly_sales;
-
-SELECT *,
-LEAD(sales_amount,1) OVER(ORDER BY month_id) AS Next_sales
-FROM monthly_sales;
-
 
 SELECT *,
 LAG(sales_amount,1,'Data Not Available')  OVER(ORDER BY month_id) AS previous_sales,
@@ -671,116 +631,5 @@ SELECT *,
 LAG(sales_amount,2,'Data Not Available')  OVER(ORDER BY month_id) AS previous_sales,
 LEAD(sales_amount,2,'Data Not Available') OVER(ORDER BY month_id) AS Next_sales
 FROM monthly_sales;
-
-SELECT *,
-LAG(sales_amount,2,'Data Not Available')  OVER(ORDER BY month_id) AS previous_sales
-FROM monthly_sales;
-
-SELECT *,
-LEAD(sales_amount,2,'Data Not Available') OVER(ORDER BY month_id) AS Next_sales
-FROM monthly_sales;
-
-
-
--- Windows (range) Clause -----------------------------------------------------------------------------------------
-
-
-CREATE TABLE monthly_sales (
-    month_id INT,
-    month_name VARCHAR(10),
-    sales INT
-);
-
-INSERT INTO monthly_sales
-VALUES
-(1, 'Jan', 100),
-(2, 'Feb', 200),
-(3, 'Mar', 300),
-(4, 'Apr', 400),
-(5, 'May', 500);
-
-SELECT * FROM monthly_sales;
-
-DROP TABLE monthly_sales;
-
-
-
--- 1. Running Total
-SELECT * FROM monthly_sales;
-
-SELECT
-     *,
-    SUM(sales) OVER (ORDER BY month_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
-FROM monthly_sales;
-
-
-
--- 2. Remaining Total
-SELECT * FROM monthly_sales;
-
-SELECT
-     *,
-    SUM(sales) OVER (ORDER BY month_id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS remaining_total
-FROM monthly_sales;
-
-
-
--- 3. Grand Total
-SELECT * FROM monthly_sales;
-
-SELECT
-     *,
-    SUM(sales) OVER (ORDER BY month_id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS grand_total
-FROM monthly_sales;
-
-
-
--- 4. Rolling Sum of Last 2 Rows
-SELECT * FROM monthly_sales;
-
-SELECT
-    *,
-    SUM(sales) OVER (ORDER BY month_id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS rolling_sum
-FROM monthly_sales;
-
-
-
--- 5. Forward Looking Sum
-SELECT * FROM monthly_sales;
-
-SELECT
-    *,
-    SUM(sales) OVER (ORDER BY month_id ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING) AS future_sum
-FROM monthly_sales;
-
-
-
--- 6. Moving Average
-SELECT * FROM monthly_sales;
-
-SELECT
-    *,
-    AVG(sales) OVER (ORDER BY month_id ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS moving_avg
-FROM monthly_sales;
-
-
-
--- 7. Previous Row + Current Row
-SELECT * FROM monthly_sales;
-
-SELECT
-    *,
-    SUM(sales) OVER (ORDER BY month_id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS prev_current_sum
-FROM monthly_sales;
-
-
-
--- 8. Current Row + Next Row
-SELECT * FROM monthly_sales;
-
-SELECT
-   *,
-    SUM(sales) OVER (ORDER BY month_id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) AS current_next_sum
-FROM monthly_sales;
-
-
+     
+     
