@@ -597,6 +597,11 @@ ON SCHEDULE EVERY 5 MINUTE
 DO
 CALL load_sales_staging();
 
+SHOW events;
+
+SELECT * FROM sales_staging;
+
+DROP event load_sales_staging_event;
 
 /*
 
