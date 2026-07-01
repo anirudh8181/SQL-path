@@ -367,17 +367,73 @@ GROUP BY c.customer_id;
 
 -- 30. Find average order value for each customer
 
+SELECT c.customer_name,
+       AVG(order_total.total_amount) AS avg_order_value
+FROM customers c
+JOIN orders o
+ON c.customer_id = o.customer_id
+JOIN (
+    SELECT order_id,
+           SUM(quantity * price_each) AS total_amount
+    FROM order_items
+    GROUP BY order_id
+) order_total
+ON o.order_id = order_total.order_id
+GROUP BY c.customer_name;
+
+
 -- 31. Display customer name, product name, quantity, and shipment status
+SELECT c.customer_name,
+       p.product_name,
+       oi.quantity,
+       s.shipment_status
+FROM customers c
+JOIN orders o
+ON c.customer_id = o.customer_id
+JOIN order_items oi
+ON o.order_id = oi.order_id
+JOIN products p
+ON oi.product_id = p.product_id
+LEFT JOIN shipments s
+ON o.order_id = s.order_id;
+
 
 -- 32. Show customer name with payment mode and shipment status
 
 -- 33. Find all products purchased by customer 'Anil'
 
+SELECT p.product_id, p.product_name , c.customer_name
+FROM products p
+JOIN order_items oi
+ON p.product_id=oi.product_id
+JOIN orders o
+ON oi.order_id = o.order_id
+JOIN customers c
+ON o.customer_id=c.customer_id
+WHERE c.customer_name ='Anil';
+
 -- 34. Display all orders with total order amount
 
--- 35. Show category-wise product sales
+SELECT o.order_id,
+       SUM(oi.quantity * oi.price_each) AS total_amount
+FROM orders o
+JOIN order_items oi
+ON o.order_id = oi.order_id
+GROUP BY o.order_id;
+
+
+-- 35. Show category-wise product sales 
+
+SELECT c.category_name, SUM(oi.quantity*oi.price_each) AS product_sales, SUM(oi.quantity) AS total_sales
+FROM products p
+JOIN order_items oi
+ON p.product_id=oi.product_id
+JOIN categories c
+ON p.category_id=c.category_id
+GROUP BY c.category_name;
 
 -- 36. Find city-wise total revenue
+
 
 -- 37. Find which manager supervises employees generating highest sales
 

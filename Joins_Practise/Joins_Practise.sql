@@ -537,6 +537,7 @@ ON o.order_id = oi.order_id
 GROUP BY e.employee_name;
 
 -- 30. Find average order value for each customer
+
 SELECT c.customer_name,
        AVG(order_total.total_amount) AS avg_order_value
 FROM customers c
@@ -550,6 +551,11 @@ JOIN (
 ) order_total
 ON o.order_id = order_total.order_id
 GROUP BY c.customer_name;
+
+    SELECT order_id,
+           SUM(quantity * price_each) AS total_amount
+    FROM order_items
+    GROUP BY order_id;
 
 -- 31. Display customer name, product name, quantity, and shipment status
 SELECT c.customer_name,

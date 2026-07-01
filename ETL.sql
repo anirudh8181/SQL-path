@@ -225,4 +225,16 @@ SELECT *FROM payments;
  3.High Concurrency: Manages thousands of simultaneous users without data conflicts.
  4.Simple Queries: Targets small, specific rows of data rather than heavy aggregations or historical scans.
  
+ 
+ 
+ 
+Incremental Loading
+Full Load vs Incremental Load
+Change Data Capture (CDC)
+Watermarks
+Slowly Changing Dimensions (SCD)
+Staging Tables
+Fact & Dimension Tables
  */
+
+

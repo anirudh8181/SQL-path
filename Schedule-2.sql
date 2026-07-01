@@ -157,7 +157,8 @@ WHERE EVENT_NAME='monitor_demo';
 ALTER EVENT monitor_demo
 DISABLE;
 
-DROP EVENT demo_event;
+DROP EVENT monitor_demo;
+
 
 
 -- 2. Job Run History Table
@@ -237,4 +238,11 @@ SELECT COUNT(*)
 FROM audit_log
 WHERE process_name='MONITOR_DEMO'
 AND DATE(execution_time)=CURDATE();
+
+
+
+
+
+
+
 
