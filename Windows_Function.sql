@@ -123,6 +123,7 @@ Example Table:
 
 */
 
+
 SELECT
     product_name,
     brand,
@@ -130,6 +131,7 @@ SELECT
     unit_price,
     SUM(unit_price) OVER( PARTITION BY category ) AS Total
 FROM dim_product;
+
 
 /*
 

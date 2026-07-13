@@ -400,6 +400,8 @@ ON o.order_id = s.order_id;
 
 -- 32. Show customer name with payment mode and shipment status
 
+
+
 -- 33. Find all products purchased by customer 'Anil'
 
 SELECT p.product_id, p.product_name , c.customer_name
@@ -435,6 +437,7 @@ GROUP BY c.category_name;
 -- 36. Find city-wise total revenue
 
 
+
 -- 37. Find which manager supervises employees generating highest sales
 
 -- 38. Display customer reviews along with product category
@@ -443,7 +446,22 @@ GROUP BY c.category_name;
 
 -- 40. Find customers who purchased products from more than one category
 
+SELECT c.customer_name,
+       COUNT(DISTINCT p.category_id) AS categories_bought
+FROM customers c
+JOIN orders o
+ON c.customer_id = o.customer_id
+JOIN order_items oi
+ON o.order_id = oi.order_id
+JOIN products p
+ON oi.product_id = p.product_id
+GROUP BY c.customer_name
+HAVING COUNT(DISTINCT p.category_id) > 1;
+
+
 -- 41. Find monthly revenue trend
+
+
 
 -- 42. Find daily order count trend
 
@@ -451,6 +469,26 @@ GROUP BY c.category_name;
 
 
 -- 44. Find customer retention by counting repeat purchases
+
+
+SELECT o.customer_id,count(oi.product_id) AS repeat_purchase
+FROM orders o
+JOIN  order_items oi
+ON o.order_id = oi.order_id
+GROUP BY o.customer_id
+ORDER BY repeat_purchase DESC;
+
+
+SELECT
+    c.customer_name,
+    COUNT(o.order_id) AS total_orders
+FROM customers c
+JOIN orders o
+ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.customer_name
+HAVING COUNT(o.order_id) > 1;
+
+
 
 -- 45. Find percentage contribution of each category to total sales
 

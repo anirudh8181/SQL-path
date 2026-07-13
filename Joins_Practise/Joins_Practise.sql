@@ -675,6 +675,9 @@ ON oi.product_id = p.product_id
 GROUP BY c.customer_name
 HAVING COUNT(DISTINCT p.category_id) > 1;
 
+
+
+
 -- 41. Find monthly revenue trend
 SELECT MONTH(o.order_date) AS month,
        SUM(oi.quantity * oi.price_each) AS revenue
@@ -707,6 +710,14 @@ ON c.customer_id = o.customer_id
 JOIN order_items oi
 ON o.order_id = oi.order_id
 GROUP BY c.customer_name;
+
+
+
+
+
+
+
+
 
 -- 45. Find percentage contribution of each category to total sales
 SELECT c.category_name,
