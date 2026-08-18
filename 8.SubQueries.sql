@@ -1463,7 +1463,6 @@ Because the inner query is correlated (linked) to the outer query.
 
 The line:
 
-sql:
 WHERE category = p.category
 
 
@@ -1512,7 +1511,9 @@ WHERE total_amount =
     WHERE f2.customer_key = f1.customer_key
 );
 
+
 -- 2. Find customers whose total purchases exceed average customer spending
+
 SELECT customer_key
 FROM fact_sales fs
 GROUP BY customer_key
@@ -1525,11 +1526,14 @@ HAVING SUM(total_amount) > (
     ) t
 );
 
+
+
 -- 3. Find stores whose sales are above average sales of stores in same region
 SELECT store_name, region
 FROM dim_store ds
 WHERE (
     SELECT SUM(total_amount)
+
     FROM fact_sales fs
     WHERE fs.store_key = ds.store_key
 ) > (
@@ -1545,7 +1549,8 @@ WHERE (
     ) x
 );
 
--- 4. Find highest-priced product in each 
+
+-- 4. Find highest-priced product in each category
 
 SELECT product_name, category, unit_price
 FROM dim_product p
@@ -1556,7 +1561,35 @@ WHERE unit_price = (
 );
 
 
+-- 5. Customers who purchased at least once (EXISTS)
+
+SELECT *
+FROM dim_customer c
+WHERE EXISTS 
+(
+    SELECT 1 
+    FROM fact_sales fs
+    WHERE fs.customer_key = c.customer_key
+);
+
+
+
+
+-- 6. Most expensive sale for every product
+
+SELECT *
+FROM fact_sales fs1
+WHERE unit_price =
+(
+    SELECT MAX(unit_price)
+    FROM fact_sales fs2
+    WHERE fs2.product_key = fs1.product_key
+);	
+
+
+
 -- Nested Subquery (subquery inside another subquery)
+
 -- 1. Find customers who purchased the most expensive product
 SELECT first_name, last_name
 FROM dim_customer
@@ -1573,8 +1606,13 @@ WHERE customer_key IN (
     )
 );
 
+
+
+
+
+
 -- 2. Find stores that sold products from the category with highest average price
-SELECT store_name
+SELECT *
 FROM dim_store
 WHERE store_key IN (
     SELECT DISTINCT store_key
@@ -1588,6 +1626,7 @@ WHERE store_key IN (
             GROUP BY category
             ORDER BY AVG(unit_price) DESC
             LIMIT 1
+            
         )
     )
 );
@@ -1644,7 +1683,7 @@ Extra topics:
 6. Subquery in SELECT clause
 7. Correlated UPDATE
 8. Correlated DELETE
-9. Subquery vs JOIN (Performance Example)
+9. Subquery vs JOIN (Performance Example)  
 
 */
 
@@ -1710,6 +1749,20 @@ WHERE NOT EXISTS (
 -- 3. ANY (SOME)
 -- Comparison against at least one value
 -- 
+
+/*
+| Operator | Meaning                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------- |
+| `= ANY`  | Equal to at least one value (similar to `IN`)                                               |
+| `> ANY`  | Greater than at least one value (effectively `> MIN`)                                       |
+| `< ANY`  | Less than at least one value (effectively `< MAX`)                                          |
+| `> ALL`  | Greater than every value (effectively `> MAX`)                                              |
+| `< ALL`  | Less than every value (effectively `< MIN`)                                                 |
+| `= ALL`  | Equal to every value (only true if all returned values are identical to the compared value) |
+
+
+
+*/
 
 -- Products more expensive than at least one Electronics product
 

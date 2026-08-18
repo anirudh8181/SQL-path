@@ -265,11 +265,15 @@ SELECT
     first_name,
     last_name,
     CONCAT(
-        COALESCE(first_name, ''),  -- COALESCE TO HANDLE NULL VALUES
+        COALESCE(first_name, ''),  -- COALESCE TO HANDLE NULL VALUES , COALESCE(first_name, '') returns an empty string ('')
         ' ',
         COALESCE(last_name, '')
     ) AS full_name
-FROM customers;   
+FROM customers;  
+
+SELECT LENGTH('');
+
+SELECT LENGTH(' ');  
 
 
 -- 2
@@ -554,11 +558,104 @@ FROM employees
 ORDER BY flag,salary;
 
 
+-- IS NULL and IS NOT NULL are SQL operators used to check whether a column contains a NULL values
+/*
+-- This does not work.
+!= NULL;
+
+Why?
+A NULL represents an unknown value.
+
+If you ask:
+NULL = NULL
+
+SQL cannot determine whether two unknown values are equal.
+
+The result is: UNKNOWN
+
+not TRUE.
+
+Therefore SQL provides special operators:
+IS NULL
+IS NOT NULL
 
 
+*/
+SELECT * 
+FROM customers
+WHERE first_name = NULL;
+
+-- IS NULL, Used to find rows where a column has no value
+SELECT * 
+FROM customers
+WHERE first_name IS NULL;
 
 
+-- IS NOT NULL, Used to find rows where a column contains a value.
+
+SELECT * 
+FROM customers
+WHERE first_name IS NOT NULL;
 
 
+/*
+A LEFT ANTI JOIN returns rows from the left table that do not have a matching row in the right table.
+
+A RIGHT ANTI JOIN returns rows from the right table that do not have a matching row in the left table.
+
+Since MySQL doesn't have ANTI JOIN syntax, you'll usually use NOT EXISTS, NOT IN, or LEFT JOIN ... IS NULL.
+
+*/
+
+CREATE TABLE customs (
+    customer_id INT PRIMARY KEY,
+    customer_name VARCHAR(50)
+);
+
+
+INSERT INTO customs VALUES
+(1, 'Alice'),
+(2, 'Bob'),
+(3, 'Charlie'),
+(4, 'David'),
+(5, 'Emma'),
+(6, 'Frank');
+
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY,
+    customer_id INT,
+    amount DECIMAL(10,2)
+);
+
+INSERT INTO orders VALUES
+(101, 1, 1200),
+(102, 2, 800),
+(103, 2, 1500),
+(104, 4, 900),
+(105, 7, 500);
+
+-- in sql we dont have right/left anti join
+
+SELECT c.*
+FROM customs c
+LEFT JOIN orders o
+ON c.customer_id = o.customer_id;
+
+
+SELECT c.*
+FROM customs c
+LEFT JOIN orders o
+ON c.customer_id = o.customer_id
+WHERE o.customer_id IS NULL;
+
+-- NOT EXISTS / want to know if at least one row exists
+
+SELECT *
+FROM customs c
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM orders o
+    WHERE o.customer_id = c.customer_id
+);
 
 

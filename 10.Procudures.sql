@@ -149,6 +149,34 @@ DELIMITER ;
 
 CALL Avg_info();
 
+DROP PROCEDURE  Avg_info;
+
+
+-- sample 1	
+
+DELIMITER //
+
+CREATE PROCEDURE CheckProductPrice(
+    IN input_product_key INT
+)
+BEGIN
+    DECLARE price DECIMAL(10,2);
+
+    SELECT unit_price
+    INTO price
+    FROM dim_product
+    WHERE product_key = input_product_key;
+
+    IF price >= 5000 THEN
+        SELECT 'Expensive Product' AS price_category;
+    ELSEIF price >= 2000 THEN
+        SELECT 'Medium Price Product' AS price_category;
+    ELSE
+        SELECT 'Affordable Product' AS price_category;
+    END IF;
+END //
+
+DELIMITER ;
 
 /*
 
@@ -298,6 +326,27 @@ total = 3
       ↓
 @count = 3
 
+------------------------
+employees table
+      |
+      | COUNT(*)
+      ↓
+     5
+      |
+      ↓
+Total_count
+   (OUT parameter)
+      |
+      ↓
+    @count
+   (session variable)
+      |
+      ↓
+SELECT @count
+      |
+      ↓
+      5
+
 */
 
 DELIMITER //
@@ -315,6 +364,8 @@ DELIMITER ;
 CALL GetDouble(@ans);
 
 SELECT @ans;
+
+DROP PROCEDURE GetDouble;
 
 
 /*
@@ -416,3 +467,203 @@ Returns updated value.
 
 
 */
+
+-- switch to sample 'procedure' schema
+
+CREATE DATABASE Sample_Procedure;
+
+USE Sample_Procedure;
+
+
+
+-- Get product information
+
+DELIMITER //
+
+CREATE PROCEDURE GetProduct(
+    IN p_product_id INT
+)
+BEGIN
+
+    SELECT
+        product_id,
+        product_name,
+        category,
+        price,
+        stock
+    FROM products
+    WHERE product_id = p_product_id
+      AND active = TRUE;
+
+END //
+
+DELIMITER ;
+
+CALL GetProduct(1);
+
+
+-- Update product price with validation
+
+/*
+
+IF marks >= 90 THEN
+    SET grade = 'A';
+
+ELSEIF marks >= 75 THEN
+    SET grade = 'B';
+
+ELSEIF marks >= 50 THEN
+    SET grade = 'C';
+
+ELSE
+    SET grade = 'F';
+END IF;
+
+
+             Price <= 0?
+             /        \
+           YES         NO
+           ↓            ↓
+     Error message   Product exists?
+                     /          \
+                   NO            YES
+                   ↓              ↓
+             Error message      UPDATE
+
+*/
+
+
+
+DELIMITER //
+
+CREATE PROCEDURE UpdateProductPrice(
+    IN p_product_id INT,
+    IN p_new_price DECIMAL(10,2),
+    OUT p_message VARCHAR(100)
+)
+BEGIN
+
+    IF p_new_price <= 0 THEN
+
+        SET p_message = 'Price must be greater than zero';
+
+    ELSEIF NOT EXISTS (
+        SELECT 1
+        FROM products
+        WHERE product_id = p_product_id
+    ) THEN
+
+        SET p_message = 'Product does not exist';
+
+    ELSE
+
+        UPDATE products
+        SET price = p_new_price
+        WHERE product_id = p_product_id;
+
+        SET p_message = 'Product price updated successfully';
+
+    END IF;
+
+END //
+
+DELIMITER ;
+
+
+CALL UpdateProductPrice(
+    1,
+    70000,
+    @message
+);
+
+
+-- Customer purchase summary
+DELIMITER //
+
+CREATE PROCEDURE GetCustomerPurchaseSummary(
+    IN p_customer_id INT,
+    OUT p_order_count INT,
+    OUT p_total_spent DECIMAL(12,2)
+)
+BEGIN
+
+    SELECT COUNT(*)
+    INTO p_order_count
+    FROM orders
+    WHERE customer_id = p_customer_id;
+
+    SELECT COALESCE(SUM(total_amount), 0)
+    INTO p_total_spent
+    FROM orders
+    WHERE customer_id = p_customer_id
+      AND status <> 'CANCELLED';
+
+END //
+
+DELIMITER ;
+
+
+-- Cancel an order and restore stock
+
+/*
+Check order.
+Check status.
+Restore product stock.
+Mark order cancelled.
+Do everything inside one transaction.
+
+*/
+DELIMITER //
+
+CREATE PROCEDURE CancelOrder(
+    IN p_order_id INT
+)
+BEGIN
+
+    DECLARE v_status VARCHAR(20);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- Lock the order
+    SELECT status
+    INTO v_status
+    FROM orders
+    WHERE order_id = p_order_id
+    FOR UPDATE;
+
+    IF v_status IS NULL THEN
+
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Order does not exist';
+
+    ELSEIF v_status IN ('CANCELLED', 'COMPLETED') THEN
+
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT =
+        'Order cannot be cancelled';
+
+    END IF;
+
+    -- Restore stock
+    UPDATE products p
+    JOIN order_items oi
+        ON p.product_id = oi.product_id
+    SET p.stock = p.stock + oi.quantity
+    WHERE oi.order_id = p_order_id;
+
+    -- Cancel order
+    UPDATE orders
+    SET status = 'CANCELLED'
+    WHERE order_id = p_order_id;
+
+    COMMIT;
+
+END //
+
+DELIMITER ;

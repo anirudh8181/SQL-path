@@ -38,7 +38,7 @@ Examples:
 | ------------- | ---------------------------- |
 | Aggregate     | SUM, AVG, COUNT, MIN, MAX    |
 | Ranking       | ROW_NUMBER, RANK, DENSE_RANK |
-| Analytical    | LAG, LEAD, FIRST_VALUE ,NTH tile      |
+| Analytical    | LAG, LEAD, FIRST_VALUE ,NTH tile  |
 
 
 Example:
@@ -183,6 +183,7 @@ sliding window
 
 Example:
 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+ROWS BETWEEN  CURRENT ROW AND 2 FOLLOWING
 ROWS BETWEEN UNBOUNDED PRECEDING AND  UNBOUNDED FOLLOWING
 ROWS BETWEEN 2 PRECEDING AND 3 FOLLOWING
 
@@ -383,7 +384,7 @@ VALUES
 
 
 
-DROP TABLE IF EXISTS employees_1;
+DROP TABLE IF EXISTS employees;
 
 
 /*
@@ -473,12 +474,15 @@ DENSE_RANK() OVER(ORDER BY salary DESC) AS 'Dense_Rank'
 FROM employees;
 
 
+
+
 -- 1 
 SELECT *,
 ROW_NUMBER() OVER(ORDER BY salary DESC) AS 'Row_Number',
 RANK() OVER(ORDER BY salary DESC) AS 'Row_Rank',
 DENSE_RANK() OVER(ORDER BY salary DESC) AS 'Dense_Rank'
 FROM employees;
+
 
 
 -- Applying Partition
@@ -502,15 +506,35 @@ DENSE_RANK() OVER(PARTITION BY department ORDER BY salary DESC) AS 'Dense_Rank'
 FROM employees;
 
 
+SELECT *,
+ROW_NUMBER() OVER(PARTITION BY department ORDER BY salary DESC) AS 'Row_Number'
+FROM employees;
+
+
+SELECT *,
+RANK() OVER(PARTITION BY department ORDER BY salary DESC) AS 'Row_Rank'
+FROM employees;
+
+SELECT *,
+DENSE_RANK() OVER(PARTITION BY department ORDER BY salary DESC) AS 'Dense_Rank'
+FROM employees;
+
+-- ranking with partitions
+
+
+
+
 -- REAL TIME scenarios
 
 -- SCENARIO 1. FIND Nth Value [Most afordable/ most expensive from top to bottom]
 
 -- SUBQUERY
 
+-- AFFORDABLE
+
 SELECT 
        *,
-       DENSE_RANK() OVER(ORDER BY unit_Price) AS ranking
+       DENSE_RANK() OVER(ORDER BY unit_Price ASC) AS ranking
 FROM 
   dim_product;       
 
@@ -528,7 +552,7 @@ WHERE
   ranking =5;
   
   
-SELECT subquery.*  -- subquery.* means: "Open the  'subquery' and give me every folder inside it."
+SELECT subquery.*  -- subquery.* means: "Open the  'subquery' and give me every columns inside it."
 FROM
 (
 SELECT 
@@ -539,6 +563,10 @@ FROM
 ) subquery -- <-- This names the inner results "subquery"
 WHERE 
   ranking =5;
+  
+  
+  
+
 
 
 -- SCENARIO 2. [Removing duplicates/ Deduplicating] 
@@ -547,6 +575,7 @@ SELECT * FROM employees;
 
 INSERT INTO employees(emp_id,employee_name,department,salary)
 VALUES
+(9,	"John","sales","65000"),
 (10, "Asha","sales","50000");
 
 
@@ -563,11 +592,30 @@ SELECT
 FROM    
 (
 SELECT *,
-      ROW_NUMBER() OVER(PARTITION BY emp_id ORDER BY emp_id) AS Deduplicate_Ranking 
+      ROW_NUMBER() OVER(PARTITION BY emp_id ORDER BY emp_id) AS Deduplicate_Ranking
 FROM 
    employees
 ) subquery 
 WHERE Deduplicate_Ranking=1;
+
+
+
+SELECT 
+    emp_id,
+    Deduplicate_Ranking,
+    Total_Count
+FROM (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER(PARTITION BY emp_id ORDER BY emp_id) AS Deduplicate_Ranking,
+        COUNT(emp_id) OVER(PARTITION BY emp_id) AS Total_Count
+    FROM 
+        employees
+) subquery 
+WHERE Deduplicate_Ranking = 2
+  AND Total_Count = 3;
+
+
 
 /*
 
@@ -679,6 +727,87 @@ FROM monthly_sales;
 SELECT *,
 LEAD(sales_amount,2,'Data Not Available') OVER(ORDER BY month_id) AS Next_sales
 FROM monthly_sales;
+
+
+-- NTILE() is used to divide ordered rows into N nearly equal groups (buckets).
+
+-- Divide customers into 4 spending groups (Quartiles)
+
+SELECT
+    customer_key,
+    SUM(total_amount) AS total_spent,
+    NTILE(4) OVER
+    (
+        ORDER BY SUM(total_amount) DESC
+    ) AS spending_quartile
+FROM fact_sales
+GROUP BY customer_key;
+
+/*
+Quartile 1 → Top 125 spenders
+
+Quartile 2 → Next 125
+
+Quartile 3 → Next 125
+
+Quartile 4 → Lowest 125
+
+*/
+
+-- Divide stores into 5 revenue buckets
+
+SELECT
+    store_key,
+    SUM(total_amount) AS revenue,
+    NTILE(5) OVER
+    (
+        ORDER BY SUM(total_amount) DESC
+    ) AS revenue_bucket
+FROM fact_sales
+GROUP BY store_key;
+
+
+-- Product price tiers
+
+SELECT
+    product_name,
+    category,
+    unit_price,
+    NTILE(4) OVER
+    (
+        ORDER BY unit_price DESC
+    ) AS price_tier
+FROM dim_product;
+
+
+-- Divide sales into 10 buckets by sale amount
+
+SELECT
+    sales_id,
+    total_amount,
+    NTILE(10) OVER
+    (
+        ORDER BY total_amount DESC
+    ) AS decile
+FROM fact_sales;
+
+-- Region-wise quartiles
+
+SELECT
+    ds.region,
+    fs.store_key,
+    SUM(fs.total_amount) AS revenue,
+    NTILE(4) OVER
+    (
+        PARTITION BY ds.region
+        ORDER BY SUM(fs.total_amount) DESC
+    ) AS regional_quartile
+FROM fact_sales fs
+JOIN dim_store ds
+ON fs.store_key=ds.store_key
+GROUP BY
+ds.region,
+fs.store_key;
 
 
 
