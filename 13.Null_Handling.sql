@@ -40,7 +40,7 @@ FROM employees
 WHERE salary IS NULL;
 
 -- 2. IS NOT NULL , Returns rows where the value exists.
-SELECT emp_name, email
+SELECT *
 FROM employees
 WHERE email IS NOT NULL;
 
@@ -64,16 +64,24 @@ SELECT
     IFNULL(salary,0) AS null_salary_check
 FROM employees;
 
+/*
 
+Aggregate Exception: While individual row math returns NULL, aggregate functions
+like SUM() and AVG() ignore NULL values rather than turning the total into NULL.
+
+
+*/
+
+ SELECT AVG(salary) FROM employees;
 
 
 /*
 
 4. COALESCE()
 
-COALESCE() returns the first non-NULL value from a list of expressions.
+COALESCE() returns the first non-NULL value from a list of expressions (columns).
 
-Synatax:
+Syntax:
 COALESCE(value1, value2, value3, ..., default)
 
 When you have multiple columns that may contain the required value.
@@ -96,6 +104,14 @@ FROM employees;
 
 SELECT email,bonus, mobile, home_phone,
 COALESCE(email,bonus, mobile, home_phone, 'Not available') AS replacement
+FROM employees;
+
+SELECT email,
+IFNULL(email , 'Not available') AS replacement
+FROM employees;
+
+SELECT email,
+COALESCE(email , 'Not available') AS replacement
 FROM employees;
 
 
@@ -145,6 +161,8 @@ SELECT
     total_sales / orders_count AS avg_sale_per_order
 FROM sales;
 
+SHOW WARNINGS;
+
 
 SELECT
     sale_id,
@@ -152,6 +170,8 @@ SELECT
     orders_count,
     total_sales / NULLIF(orders_count, 0) AS avg_sale_per_order
 FROM sales;
+
+SHOW WARNINGS;
 
 
 /*
@@ -178,13 +198,13 @@ FROM employees;
 
 -- 2. First the handle values
 SELECT emp_id, emp_name, salary,
-COALESCE(salary,0) 
+COALESCE(salary,0) AS salary_correction
 FROM employees;
 
 -- 3.
 SELECT emp_id, emp_name, salary,
 AVG(salary) OVER() AS Avg_Score,
-AVG(COALESCE(salary,0))  OVER() AS Avg_score2
+AVG(COALESCE(salary,0))  OVER() AS Org_avg
 FROM employees;
 
 
@@ -200,8 +220,9 @@ It's also part of the SQL standard, making it more portable across different dat
 */
 
 /*
+null + anything = nulll
 
-10 + 5 =5
+10 + 5 =15
 
 a + b = ab
 
@@ -209,7 +230,6 @@ a' + b' = a'b'
 
 but,
 
-null + 5 = 5
  
 null + b = null
 
@@ -483,6 +503,10 @@ SELECT *
 FROM employees
 ORDER BY salary IS NULL, salary ASC;
 
+SELECT *
+FROM employees
+WHERE salary IS NULL;
+
 
 -- Put NULLs First in Descending Order
 SELECT *
@@ -636,13 +660,13 @@ INSERT INTO orders VALUES
 
 -- in sql we dont have right/left anti join
 
-SELECT c.*
+SELECT *
 FROM customs c
 LEFT JOIN orders o
 ON c.customer_id = o.customer_id;
 
 
-SELECT c.*
+SELECT *
 FROM customs c
 LEFT JOIN orders o
 ON c.customer_id = o.customer_id

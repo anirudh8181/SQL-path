@@ -378,7 +378,7 @@ WITH RECURSIVE numbers AS (
     SELECT 1 AS n                      -- anchor query
     UNION ALL
     SELECT n + 1 FROM numbers          -- recursive step query
-    WHERE n < 20                       -- termination condition
+    WHERE n < 20                     -- termination condition
 )
 SELECT n FROM numbers;
 
@@ -418,7 +418,8 @@ SELECT val FROM multiples;
 WITH RECURSIVE date_spine AS (
     SELECT DATE '2023-10-01' AS Month_date
     UNION ALL
-    SELECT Month_date + INTERVAL 1 DAY FROM date_spine
+    SELECT Month_date + INTERVAL 1 DAY 
+    FROM date_spine
     WHERE Month_date < '2023-10-31'
 )
 SELECT Month_date FROM date_spine;
@@ -459,25 +460,34 @@ ORDER BY s.dt;
 
 
  -- Practice scaffold 
+ DROP TABLE employees;
+ 
 CREATE TABLE employees (
     emp_id INT PRIMARY KEY,
     emp_name VARCHAR(50),
     manager_id INT
 );
 INSERT INTO employees VALUES
-(1,'CEO',NULL),(2,'VP Sales',1),(3,'VP Tech',1),
-(4,'Sales Lead',2),(5,'Engineer',3),(6,'Analyst',4);
+(1,'CEO',NULL),
+(2,'VP Sales',1),
+(3,'VP Tech',1),
+(4,'Sales Lead',2),
+(5,'Engineer',3),
+(6,'Analyst',4);
 
 WITH RECURSIVE org_chart AS (
     SELECT emp_id, emp_name, manager_id, 1 AS level   -- anchor: top of tree
     FROM employees
     WHERE manager_id IS NULL
+    
     UNION ALL
+    
     SELECT e.emp_id, e.emp_name, e.manager_id, oc.level + 1  -- recursive: children
     FROM employees e
     JOIN org_chart oc ON e.manager_id = oc.emp_id
 )
-SELECT emp_id, emp_name, level FROM org_chart ORDER BY level, emp_id;
+SELECT emp_id, emp_name, level 
+FROM org_chart ORDER BY level, emp_id;
 
 /*
 
@@ -1052,6 +1062,8 @@ SELECT
 FROM calculated_sales
 WHERE total_amount > 50000;
 
+TRUNCATE table high_value_sales;
+
 
 
 CREATE TABLE products (
@@ -1098,6 +1110,9 @@ JOIN category_avg c
     ON p.category = c.category
 SET p.price = p.price * 1.10
 WHERE p.price < c.avg_price;
+
+
+TRUNCATE table products;
 
 
 -- delete products where stock is less than 10.
@@ -1165,7 +1180,7 @@ FROM
     FROM fact_sales
     GROUP BY store_key
 ) s
-WHERE revenue > 500000;
+WHERE revenue > 50000;
 
 -- Same Query Using a CTE
 
@@ -1180,7 +1195,7 @@ WITH store_revenue AS
 
 SELECT *
 FROM store_revenue
-WHERE revenue > 500000;
+WHERE revenue > 50000;
 
 -- 2. Average Revenue Across Stores, Find stores whose revenue is above the average store revenue.
 -- subquery
@@ -1193,7 +1208,7 @@ FROM
     FROM fact_sales
     GROUP BY store_key
 ) s
-WHERE revenue >
+WHERE revenue > 
 (
     SELECT AVG(revenue)
     FROM
@@ -1209,13 +1224,16 @@ WHERE revenue >
 -- cte
 WITH store_revenue AS(
 SELECT  store_key,
-       SUM(total_amount) AS revenue
+       SUM(total_amount) AS total_revenue
  FROM fact_sales
  GROUP BY store_key
 )
 SELECT * 
 FROM store_revenue
-WHERE revenue > (SELECT AVG(revenue) FROM store_revenue);
+WHERE total_revenue > (SELECT AVG(total_revenue) FROM store_revenue);
+
+
+-- aggregate ---> group by
 
 
 -- Top 5 Products, Find the top 5 products by revenue.

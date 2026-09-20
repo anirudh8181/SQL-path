@@ -144,12 +144,21 @@ FROM
 GROUP BY category;
 END //
 
-
 DELIMITER ;
+
 
 CALL Avg_info();
 
 DROP PROCEDURE  Avg_info;
+
+
+
+
+
+SHOW PROCEDURE STATUS WHERE Db = DATABASE();
+
+
+
 
 
 -- sample 1	
@@ -166,17 +175,25 @@ BEGIN
     INTO price
     FROM dim_product
     WHERE product_key = input_product_key;
+    
 
-    IF price >= 5000 THEN
+    IF price >= 500 THEN
         SELECT 'Expensive Product' AS price_category;
-    ELSEIF price >= 2000 THEN
+    ELSEIF price >= 200 THEN
         SELECT 'Medium Price Product' AS price_category;
     ELSE
         SELECT 'Affordable Product' AS price_category;
     END IF;
+    
 END //
 
 DELIMITER ;
+
+CALL  CheckProductPrice(468);
+
+DROP Procedure CheckProductPrice;
+
+SELECT price;
 
 /*
 
@@ -252,7 +269,22 @@ Original = 5
 
 */
 
--- example 2
+DELIMITER //
+
+CREATE PROCEDURE Test(IN num INT)
+BEGIN
+    SET num = num + 10;
+    SELECT num;
+END //
+
+DELIMITER ;
+
+CALL Test(20);
+
+SELECT @num;
+
+-- example 2 (switch to sales schema)
+
 DELIMITER //
 
 CREATE PROCEDURE Insert_data(IN customer_id INT, IN name VARCHAR(100), IN city VARCHAR(100))
@@ -266,10 +298,12 @@ END //
 DELIMITER ;  
 
 
-CALL Insert_data(6,'Albert','Pune');
+CALL Insert_data(8,'sky','Coimb');
 
 -- Drop a procedure
 DROP PROCEDURE  Insert_data;
+
+
 
 
 /*
@@ -308,12 +342,18 @@ END //
 DELIMITER ;
 
 
+
+
+
 -- function call
 CALL Count_Employees(@count);
 
 
 -- check the value
 SELECT @count;
+
+DROP PROCEDURE Count_Employees;
+
 
 
 /*
@@ -415,6 +455,10 @@ CALL IncreaseValue(@value);
 
 SELECT @value;
 
+DROP procedure IncreaseValue;
+
+
+
 
 /*
 
@@ -499,7 +543,9 @@ END //
 
 DELIMITER ;
 
-CALL GetProduct(1);
+CALL GetProduct(8);
+
+DROP PROCEDURE GetProduct;
 
 
 -- Update product price with validation
@@ -550,7 +596,7 @@ BEGIN
     ELSEIF NOT EXISTS (
         SELECT 1
         FROM products
-        WHERE product_id = p_product_id
+        WHERE product_id = 1
     ) THEN
 
         SET p_message = 'Product does not exist';
@@ -578,6 +624,7 @@ CALL UpdateProductPrice(
 
 
 -- Customer purchase summary
+
 DELIMITER //
 
 CREATE PROCEDURE GetCustomerPurchaseSummary(
@@ -587,11 +634,14 @@ CREATE PROCEDURE GetCustomerPurchaseSummary(
 )
 BEGIN
 
+    -- Count non-cancelled orders
     SELECT COUNT(*)
     INTO p_order_count
     FROM orders
-    WHERE customer_id = p_customer_id;
+    WHERE customer_id = p_customer_id
+      AND status <> 'CANCELLED';
 
+    -- Calculate total spent on non-cancelled orders
     SELECT COALESCE(SUM(total_amount), 0)
     INTO p_total_spent
     FROM orders
@@ -602,8 +652,21 @@ END //
 
 DELIMITER ;
 
+CALL GetCustomerPurchaseSummary(
+    2,
+    @order_count,
+    @total_spent
+);
 
--- Cancel an order and restore stock
+SELECT @order_count, @total_spent;
+
+DROP procedure GetCustomerPurchaseSummary;
+
+-- <> means not equal to.
+
+
+
+-- Cancel an order and restore stock  
 
 /*
 Check order.
@@ -613,6 +676,7 @@ Mark order cancelled.
 Do everything inside one transaction.
 
 */
+
 DELIMITER //
 
 CREATE PROCEDURE CancelOrder(
@@ -639,7 +703,7 @@ BEGIN
 
     IF v_status IS NULL THEN
 
-        SIGNAL SQLSTATE '45000'
+        SIGNAL SQLSTATE '45000'    -- A user-defined/general SQL exception.
         SET MESSAGE_TEXT = 'Order does not exist';
 
     ELSEIF v_status IN ('CANCELLED', 'COMPLETED') THEN
@@ -667,3 +731,421 @@ BEGIN
 END //
 
 DELIMITER ;
+
+/*
+
+-- FOR Update
+Lock the selected row so other transactions cannot modify it in a conflicting way while this transaction is running.
+
+
+Something goes wrong
+       ↓
+SQLEXCEPTION handler catches it
+       ↓
+ROLLBACK
+       ↓
+Undo database changes
+       ↓
+RESIGNAL
+       ↓
+Send error back to application/user
+
+
+
+----------------
+why 45000?
+
+When an exception happens:
+
+Error
+ ↓
+Handler executes
+ ↓
+Exit the current BEGIN...END block
+
+
+CONTINUE:
+DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+
+
+When an exception happens:
+
+Error
+ ↓
+Handler executes
+ ↓
+Continue executing
+
+For most transaction-based procedures, EXIT HANDLER is the safer/common pattern.
+
+
+Why use 45000?
+
+SQLSTATE codes are 5-character codes:
+
+45 000
+│  │
+│  └── specific condition
+└───── class
+
+45 represents a user-defined exception class.
+
+000 is the generic condition.
+
+So:
+
+SQLSTATE '45000'
+
+is commonly used when you want to create your own/custom error.
+
+
+
+
+-- restore stock
+
+p_order_id = 5001
+       │
+       ▼
+Find order_items for order 5001
+       │
+       ▼
+┌─────────────────────────────┐
+│ product_id │ quantity       │
+├─────────────┼───────────────┤
+│ 101         │ 2             │
+│ 102         │ 3             │
+└─────────────┴───────────────┘
+       │
+       ▼
+JOIN with products
+       │
+       ▼
+Match product_id
+       │
+       ▼
+┌────────────────────────────────┐
+│ Product │ Stock │ Order Qty    │
+├─────────┼───────┼──────────────┤
+│ 101     │ 10    │ 2            │
+│ 102     │ 20    │ 3            │
+└─────────┴───────┴──────────────┘
+       │
+       ▼
+p.stock = p.stock + oi.quantity
+       │
+       ▼
+┌─────────────────────────────┐
+│ Product 101: 10 + 2 = 12   │
+│ Product 102: 20 + 3 = 23   │
+└─────────────────────────────┘
+
+
+
+*/
+
+
+-- An exception is an unexpected/error situation while your procedure is executing.
+
+/*
+
+Procedure
+   ↓
+INSERT
+   ↓
+ERROR 
+   ↓
+Procedure stops
+
+
+Procedure
+   ↓
+INSERT
+   ↓
+ERROR 
+   ↓
+HANDLER catches error
+   ↓
+ROLLBACK
+   ↓
+Return error
+
+
+
+*/
+
+
+--  HANDLER
+
+/*
+
+Basic syntax:
+
+DECLARE EXIT HANDLER FOR SQLEXCEPTION
+BEGIN
+    -- error handling code
+END;
+
+*/
+
+
+/*
+
+-- FOR SQLEXCEPTION
+
+means:
+
+Handle SQL errors/exceptions that occur during execution.
+
+For example:
+
+duplicate primary key
+foreign key violation
+invalid SQL operation
+other SQL execution errors
+
+
+Why EXIT HANDLER?
+
+There are two important handler types:
+
+EXIT:
+DECLARE EXIT HANDLER FOR SQLEXCEPTION
+
+
+CONTINUE :
+DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+
+
+
+*/
+
+
+
+CREATE TABLE employees(
+emp_id INT PRIMARY KEY, 
+emp_name VARCHAR(100),
+salary DECIMAL(10,2)
+);
+
+INSERT INTO employees VALUES
+(1, 'Ravi', 50000),
+(2, 'Priya', 60000),
+(3, 'Kumar', 70000),
+(4, 'Ronald', 51000.67),
+(5, 'Rachel', 63400),
+(6, 'Emon', 71200);
+
+
+DELIMITER //
+
+CREATE PROCEDURE AddEmployee(
+	IN p_emp_id INT,
+    IN p_name VARCHAR(100),
+    IN p_salary DECIMAL(10,2)
+)
+BEGIN
+
+	INSERT INTO employees(emp_id, emp_name, salary)
+    VALUES (p_emp_id, p_name, p_salary);
+
+END//
+
+
+DELIMITER ;
+
+
+CALL AddEmployee(8, 'Anil', 40000);
+
+CALL AddEmployee(1, 'John', 90000); 
+
+DROP PROCEDURE AddEmployee;
+
+
+-- handle that exception
+
+
+DELIMITER //
+
+CREATE PROCEDURE AddEmployee(
+	IN p_emp_id INT,
+    IN p_name VARCHAR(100),
+    IN p_salary DECIMAL(10,2)
+)
+BEGIN
+      DECLARE EXIT HANDLER FOR SQLEXCEPTION
+      BEGIN
+        SELECT "Exception Caught: dont enter  duplicate values, refer primary key constraints" AS exception_message;
+      END;
+
+	INSERT INTO employees(emp_id, emp_name, salary)
+    VALUES (p_emp_id, p_name, p_salary);
+
+END //
+
+
+DELIMITER ;
+
+
+-- function call
+CALL AddEmployee(1, 'John', 90000);
+
+
+DELIMITER //
+
+CREATE PROCEDURE Calculate_Avg()
+BEGIN
+
+SELECT category, AVG(unit_price) AS Highest_average
+FROM dim_product
+GROUP BY category
+ORDER BY  Highest_average DESC
+LIMIT 1;
+
+END //
+
+DEIMITER ;
+
+CALL Calculate_Avg();
+
+
+DEIMITER ;
+
+CALL Calculate_Avg();
+
+DROP PROCEDURE  Calculate_Avg;
+
+
+-- sample query
+DELIMITER //
+
+CREATE PROCEDURE Calculate_Avg(IN p_category VARCHAR(100), OUT category_avg DECIMAL(10,2))
+BEGIN
+
+-- query 1
+SELECT AVG(unit_price) AS Highest_average
+INTO category_avg
+FROM dim_product
+WHERE category = p_category
+GROUP BY category;
+
+
+-- query 2
+SELECT p_category_price;
+
+END //
+
+DELIMITER ;
+
+SET @VAR = 'Books';
+
+CALL Calculate_Avg(@VAR, @category_avg);
+
+SELECT @category_avg;
+
+
+
+
+
+/*
+procedure:
+
+Updates one person's salary.
+Inserts another employee.
+If anything fails → undo everything.
+
+
+*/
+
+DELIMITER //
+
+CREATE PROCEDURE UpdateAndInsertEmployee()
+BEGIN
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Transaction failed - changes rolled back' AS message;
+    END;
+
+    START TRANSACTION;
+
+    -- Step 1
+    UPDATE employees
+    SET salary = 55000
+    WHERE emp_id = 1;
+
+    -- Step 2
+    INSERT INTO employees(emp_id, emp_name, salary)
+    VALUES (8, 'Aaron', 83000);
+
+    COMMIT;
+
+    SELECT 'Transaction successful' AS message;
+
+END //
+
+DELIMITER ;
+
+
+DROP procedure  UpdateAndInsertEmployee;
+
+
+CALL UpdateAndInsertEmployee();
+
+-- DELETE FROM employees
+-- WHERE emp_id = 8;
+
+
+/*
+
+In MySQL stored procedures, a CONTINUE HANDLER is used to handle an error or condition without stopping the execution of the procedure.
+
+Basic syntax:
+
+DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+BEGIN
+    -- handle the error
+END;
+
+
+*/
+
+DELIMITER //
+
+CREATE PROCEDURE test()
+BEGIN
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error occurred' AS message;
+    END;
+
+    SELECT 'Step 1';
+
+    INSERT INTO employee VALUES (1, 'John', 50000);
+
+    SELECT 'Step 2';
+
+END //
+
+DELIMITER ;
+
+
+CALL test();
+
+
+DROP PROCEDURE test;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
